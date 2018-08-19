@@ -1,6 +1,7 @@
 from Tkinter import *
 import Tkinter, Tkconstants, tkFileDialog, tkMessageBox
 import cv2
+import time
 import os
 
 #TODO:
@@ -49,7 +50,7 @@ class Window():
         return
     
     def _setup_with_opencv(self):
-        """Generaic function to use opencv stuff for setup"""
+        """Generic function to use opencv stuff for setup"""
         
         #hide tkinter window
         self.root.withdraw()
@@ -278,8 +279,8 @@ class Window():
 
         prompt = "select the axis on which the subject will rotate"
         
-        l = Label(self.main_frame, text = prompt)
-        l.pack(side = TOP, pady = (15, 10))
+        self.l = Label(self.main_frame, text = prompt)
+        self.l.pack(side = TOP, pady = (15, 10))
         
         self.b = Button(self.main_frame,
                         text = "next",
@@ -331,7 +332,6 @@ class Window():
         self.root.deiconify()
         return
 
-
     def _validate_timings(self):
         """Verify inputs before altering window"""
 
@@ -356,7 +356,6 @@ class Window():
         except ValueError:
             in2_is_float = False
             err_msg += "%s\n" % (spaces + in2 + spaces + spaces)
-
             
         if not in1_is_float or not in2_is_float:
             tkMessageBox.showerror("Error",err_msg)
@@ -380,17 +379,12 @@ class Window():
         self.b.pack(side = BOTTOM, pady = (5, 15))
 
         self.main_frame.pack()
-        #ask for dir to put everything
-        #make sure the program can write to and read from the given dir
-        #invalid dir -> IOError 2
-        #cannot read from dir -> IOError 13
-        #cannot write to dir -> IOError 13
 
-
-        #print(filename)
+        return
 
     def _select_scanning_dir(self):
-        #filename = tkFileDialog.askopenfilename(initialdir = "/")
+        """Get directory for project files"""
+        
         title = "Save Directory"
         
         #verify directory is usable
@@ -429,19 +423,104 @@ class Window():
             try:
                 os.remove(self.save_dir + test_file_name)
             except:
-                pass
+                print "could not remove %s" % (self.save_dir + test_file_name)
         #end of while bad_dir
-        print "project dir: %s" % self.save_dir
-        #write important stuff to the given dir and wrap up set up
+        self._end_setup()
+        return
+
+    def _clean_up_data_members(self, keep):
+        """dellattr to any member variables that arent in keep arg"""
+        
+        callables = [method for method in dir(self) if callable(getattr(self, method))]
+        
+        for attr in dir(self):
+            if attr[:2] != "__":
+                #dont touch meta stuff
+                if attr not in callables and attr not in keep:
+                    delattr(self, attr)
+        return
+                
+    
+    def _end_setup(self):
+        """Write out all relavent data and inform user set up is over"""
+
+        #
+        #
+        # what is kept at this point is dependent on how the
+        # scanning will be done:
+        #
+        # rotate subject at a constant rate and capture an image
+        # after a duration calc by full_rot_time / num_samples
+        #
+        # or
+        #
+        # rotate the subject a number of degrees equal to
+        # 360 / num_samples, capture, repeat
+        #
+        #
+
+        important = ['root',
+                     'window_height',
+                     'window_width',
+                     'main_frame',
+                     'left_bound',
+                     'top_bound',
+                     'right_bound',
+                     'bottom_bound',
+                     'rot_axis',
+                     'full_rot_axis',
+                     'num_samples']
+        self._clean_up_data_members(important)
+
+        self._clear_main_frame()
+
+        #inform user that set up is complete
+        prompt = "set up is complete, proceed to image capture"
+        l = Label(self.main_frame, text = prompt)
+        l.pack(side = TOP, pady = (15, 10) )
+
+        b = Button(self.main_frame,
+                   text = "okay",
+                   command = self._pre_scan)
+        b.pack(side = BOTTOM, pady = (5, 15) )
+
+        self.main_frame.pack()
+        
+        return
+
+    def _pre_scan(self):
+        self.root.withdraw()
         self.root.quit()
-            
+    
+    def scan(self):
+
+        #at this point, the old contents of the window are still present
+        self.root.deiconify()
+        l = Label(self.main_frame, text = "hello from scan()")
+        l.pack()
+        self.main_frame.pack()
+        self.root.mainloop()
+        
+        return
+
+
+
+
+    
 win = Window()
 
 win.setup()
     #win.set_boundaries()
     #win.set_rotational_axis()
     #win.get_scan_info() - img capture freq or stats to calc it
-    #win.setup_wait() - sit idle with video feed and overlay
+
+print "wait"
+time.sleep(2)
+print "go!"
+    
+win.scan()
+    #win.scan_wait() - sit idle with video feed and overlay
     ## of boundaries waiting for user to begin scanning
 
-#win.scan()
+
+#win.process()
